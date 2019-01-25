@@ -40,7 +40,8 @@ def compress(lzma_stream):
         #x: signed short
         #y: signed short
         #z: unsigned char
-        raw_list.append(_pack_int24(w) + struct.pack('<hhB', x, y, z))
+        raw_list.append(_pack_int24(w)) #w
+        raw_list.append(struct.pack('<hhB', x, y, z)) #x, y, and z
  
     raw = b''.join(raw_list)
     compressed = lzma.compress(raw, format=2)
