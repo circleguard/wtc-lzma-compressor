@@ -104,23 +104,23 @@ def compress(lzma_stream):
     xs = unsorted_diff_pack_16_8(xs)
     ys = unsorted_diff_pack_16_8(ys)
 
-    ws = pack_32_8(ints32)
+    ws = pack_32_8(ws)
 
     #store all data as arrays of bytes with their lenght stored in the first 4 bytes
     def pack_bytes(bs):
-        return struct.pack(f'<I{len(bs)}B', len(bs), *bs)
+        return struct.pack(f'<I{len(bs)}b', len(bs), *bs)
 
     buf = b''.join([pack_bytes(bs) for bs in (xs, ys, zs, ws)])
 
-    return lzma.compress(raw, format=2)
+    return lzma.compress(buf, format=2)
 
 def decompress(lzma_stream):
     data = lzma.decompress(lzma_stream)
 
     def unpack_bytes(data):
-        size = struct.unpack('<I', data[:4])
+        size, = struct.unpack('<I', data[:4])
         data = data[4:]
-        bs = struct.unpack(f'<{size}B', data[:size])
+        bs = struct.unpack(f'<{size}b', data[:size])
         data = data[size:]
 
         return bs, data
@@ -139,7 +139,12 @@ def decompress(lzma_stream):
 
 def separate(lzma_stream):
     text = lzma.decompress(lzma_stream).decode('UTF-8')
-    raw_list = []
+
+    xs = []
+    ys = []
+    zs = []
+    ws = []
+    
     for frame in text.split(','):
         if not frame:
             continue
