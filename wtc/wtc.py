@@ -3,17 +3,23 @@ import struct
 
 import numpy as np
 
-escape = -2 ** 7
-
 def unsorted_diff_pack_16_8(int16s):
-    """Packs the differential of the input to bytes in little endian order."""
-    
+    """
+    Packs the differential of the input to bytes in little endian order.
+
+    Args:
+        List ints16s: The list of shorts to differentially compress.
+
+    Returns:
+        The differential data as a list of bytes.
+    """
+
+    escape = -2 ** 7
+    small = 2 ** 7 - 1
     start = int16s[0]
     diff = np.diff(int16s)
-    small = 2 ** 7 - 1
-    
     packed = []
-    
+
     def pack(word):
         if abs(word) <= small:
             packed.append(word)
@@ -22,21 +28,31 @@ def unsorted_diff_pack_16_8(int16s):
             packed.append(word & 0xFF)
             word = word >> 8
             packed.append(word)
-    
+
     pack(start)
-    
     for word in diff:
         pack(word)
-            
+
     return np.int8(packed)
 
 def unsorted_diff_unpack_8_16(ints8):
-    """Unpacks the differential data in little endian order to words."""
+    """
+    Unpacks the differential data in little endian order to words.
+
+    Args:
+        List ints8s: The list of bytes to decompress.
+
+    Returns:
+        The decompressed shorts.
+    """
+    
+    escape = -2 ** 7
     decoded = []
+    
     i = 0
     while i < len(ints8):
         byte = ints8[i]
-        
+
         if byte == escape:
             i += 1
             word = ints8[i] & 0xFF
@@ -45,18 +61,28 @@ def unsorted_diff_unpack_8_16(ints8):
             decoded.append(word)
         else:
             decoded.append(byte)
-        
+
         i += 1
-        
+
     decompressed = np.cumsum(decoded)
-    
+
     return np.int16(decompressed)
 
 def pack_32_8(ints32):
-    """Packs the data in little endian order."""
-    packed = []
-    small = 2 ** 7 - 1
+    """
+    Packs the input to bytes in little endian order.
+
+    Args:
+        List ints32s: The list of shorts to compress.
+
+    Returns:
+        The data as a list of bytes.
+    """
     
+    escape = -2 ** 7
+    small = 2 ** 7 - 1
+    packed = []
+
     for dword in ints32:
         if abs(dword) <= small:
             packed.append(dword)
@@ -69,16 +95,27 @@ def pack_32_8(ints32):
             packed.append(dword & 0xFF)
             dword = dword >> 8
             packed.append(dword)
-            
+
     return np.int8(packed)
 
 def unpack_8_32(ints8):
-    """Unpacks the data in little endian order."""
+    """
+    Unpacks the data in little endian order.
+
+    Args:
+        List ints8s: The list of bytes to decompress.
+
+    Returns:
+        The decompressed integers.
+    """
+    
+    escape = -2 ** 7
     unpacked = []
+    
     i = 0
     while i < len(ints8):
         byte = ints8[i]
-        
+
         if byte == escape:
             i += 1
             dword = ints8[i] & 0xFF
@@ -91,13 +128,22 @@ def unpack_8_32(ints8):
             unpacked.append(dword)
         else:
             unpacked.append(byte)
-            
+
         i += 1
-            
+
     return np.int32(unpacked)
 
 def compress(lzma_stream):
+    """
+    Packs replay into a more compact format.
 
+    Args:
+        String lzma_stream: An lzma stream from a replay.
+
+    Returns:
+        An lzma compressed bytestring
+    """
+    
     #separate the lzma stream to apply different compression for each datatype
     xs, ys, zs, ws = separate(lzma_stream)
 
@@ -114,8 +160,18 @@ def compress(lzma_stream):
 
     return lzma.compress(buf, format=2)
 
-def decompress(lzma_stream):
-    data = lzma.decompress(lzma_stream)
+def decompress(compressed_lzma):
+    """
+    Decompresses a separated and compressed lzma into an lzma stream.
+
+    Args:
+        String compressed_lzma: A separated and compressed representation of replay data.
+
+    Returns:
+        An lzma compressed bytestring, identical to the (decoded) string returned by the get_replay api endpoint.
+    """
+    
+    data = lzma.decompress(compressed_lzma)
 
     def unpack_bytes(data):
         size, = struct.unpack('<I', data[:4])
@@ -132,19 +188,28 @@ def decompress(lzma_stream):
 
     xs = unsorted_diff_unpack_8_16(xs)
     ys = unsorted_diff_unpack_8_16(ys)
-    
+
     ws = unpack_8_32(ws)
 
     return combine(xs, ys, zs, ws)
 
 def separate(lzma_stream):
+    """
+    Separates the lzma stream of frames into separate lists of x, y, z and w.
+
+    Args:
+        String lzma_stream: The lzma to separate.
+        
+    Returns:
+        The lists of x, y, z, w.
+    """
     text = lzma.decompress(lzma_stream).decode('UTF-8')
 
     xs = []
     ys = []
     zs = []
     ws = []
-    
+
     for frame in text.split(','):
         if not frame:
             continue
@@ -179,6 +244,19 @@ def separate(lzma_stream):
     return xs, ys, zs, ws
 
 def combine(xs, ys, zs, ws):
+    """
+    Combines the lists of x, y, z and w into a lzma stream.
+
+    Args:
+        List x: All x datapoints.
+        List y: All y datapoints.
+        List z: All z datapoints.
+        List w: All w datapoints.
+        
+    Returns:
+        The combination as an lzma stream.
+    """
+    
     if not len(xs) == len(ys) == len(zs) == len(ws):
         raise ValueError("The bytearrays are of unequal lengths")
 
