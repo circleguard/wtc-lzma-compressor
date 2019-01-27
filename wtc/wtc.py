@@ -20,12 +20,15 @@ def compress(lzma_stream):
 
     xs = compression.unsorted_diff_pack_16_8(xs)
     ys = compression.unsorted_diff_pack_16_8(ys)
+    
     zs = compression.scolvr(zs)
+    zs = compression.pack_16_8(zs)
+    
     ws = compression.pack_32_8(ws)
 
     bx = compression.pack_bytes(xs)
     by = compression.pack_bytes(ys)
-    bz = compression.pack_words(zs)
+    bz = compression.pack_bytes(zs)
     bw = compression.pack_bytes(ws)
 
     buf = b''.join((bx, by, bz, bw))
@@ -47,12 +50,15 @@ def decompress(compressed_lzma):
     
     xs, data = compression.unpack_bytes(data)
     ys, data = compression.unpack_bytes(data)
-    zs, data = compression.unpack_words(data)
+    zs, data = compression.unpack_bytes(data)
     ws, data = compression.unpack_bytes(data)
 
     xs = compression.unsorted_diff_unpack_8_16(xs)
     ys = compression.unsorted_diff_unpack_8_16(ys)
+    
+    zs = compression.unpack_8_16(zs)
     zs = compression.olvsco(zs)
+    
     ws = compression.unpack_8_32(ws)
 
     return combine(xs, ys, zs, ws)

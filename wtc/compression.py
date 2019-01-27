@@ -32,6 +32,38 @@ def unpack_words(data):
 
     return words, data
 
+def pack_16_8(int16s):
+    """Packs the data in little endian order."""
+
+    packed = []
+
+    for word in int16s:
+        packed.extend(pack_word_byte(word))
+
+    return np.int8(packed)
+
+def unpack_8_16(ints8):
+    """Unpacks the data in little endian order."""
+
+    decoded = []
+
+    i = 0
+    while i < len(ints8):
+        byte = ints8[i]
+
+        if byte == -128:
+            i += 1
+            word = ints8[i] & 0xFF
+            i += 1
+            word += ints8[i] << 8
+            decoded.append(word)
+        else:
+            decoded.append(byte)
+
+        i += 1
+
+    return np.int16(decoded)
+
 def unsorted_diff_pack_16_8(int16s):
     """
     Packs the differential of the input to bytes in little endian order.
