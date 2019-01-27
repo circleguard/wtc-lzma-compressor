@@ -13,6 +13,9 @@ def pack_word_byte(word):
 def pack_bytes(bs):
         return struct.pack(f'<I{len(bs)}b', len(bs), *bs)
 
+def pack_words(words):
+        return struct.pack(f'<I{len(words)}H', len(words), *words)
+
 def unpack_bytes(data):
     size, = struct.unpack('<I', data[:4])
     data = data[4:]
@@ -20,6 +23,14 @@ def unpack_bytes(data):
     data = data[size:]
 
     return bs, data
+
+def unpack_words(data):
+    size, = struct.unpack('<I', data[:4])
+    data = data[4:]
+    words = struct.unpack(f'<{size}H', data[:2 * size])
+    data = data[2 * size:]
+
+    return words, data
 
 def unsorted_diff_pack_16_8(int16s):
     """
@@ -162,7 +173,7 @@ def scolvr(sparse):
         shorts.append(length)
         shorts.append(current)
         
-    return shorts
+    return np.uint16(shorts)
 
 def grouper(iterable, n, fillvalue=None):
     #https://docs.python.org/3/library/itertools.html#itertools-recipes
@@ -195,4 +206,4 @@ def olvsco(olv_data):
         sparse.extend(o * [0])
         sparse.extend(l * [v])
 
-    return sparse
+    return np.uint8(sparse)
