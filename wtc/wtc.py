@@ -151,7 +151,7 @@ def compress(lzma_stream):
     ys = unsorted_diff_pack_16_8(ys)
 
     ws = pack_32_8(ws)
-
+    zs = np.int8(zs)
     #store all data as arrays of bytes with their lenght stored in the first 4 bytes
     def pack_bytes(bs):
         return struct.pack(f'<I{len(bs)}b', len(bs), *bs)
