@@ -1,6 +1,138 @@
 import lzma
 import struct
 
+import numpy as np
+
+def unsorted_diff_pack_16_8(int16s):
+    """
+    Packs the differential of the input to bytes in little endian order.
+
+    Args:
+        List ints16s: The list of shorts to differentially compress.
+
+    Returns:
+        The differential data as a list of bytes.
+    """
+
+    escape = -2 ** 7
+    small = 2 ** 7 - 1
+    start = int16s[0]
+    diff = np.diff(int16s)
+    packed = []
+
+    def pack(word):
+        if abs(word) <= small:
+            packed.append(word)
+        else:
+            packed.append(escape)
+            packed.append(word & 0xFF)
+            word = word >> 8
+            packed.append(word)
+
+    pack(start)
+    for word in diff:
+        pack(word)
+
+    return np.int8(packed)
+
+def unsorted_diff_unpack_8_16(ints8):
+    """
+    Unpacks the differential data in little endian order to words.
+
+    Args:
+        List ints8s: The list of bytes to decompress.
+
+    Returns:
+        The decompressed shorts.
+    """
+    
+    escape = -2 ** 7
+    decoded = []
+    
+    i = 0
+    while i < len(ints8):
+        byte = ints8[i]
+
+        if byte == escape:
+            i += 1
+            word = ints8[i] & 0xFF
+            i += 1
+            word += ints8[i] << 8
+            decoded.append(word)
+        else:
+            decoded.append(byte)
+
+        i += 1
+
+    decompressed = np.cumsum(decoded)
+
+    return np.int16(decompressed)
+
+def pack_32_8(ints32):
+    """
+    Packs the input to bytes in little endian order.
+
+    Args:
+        List ints32s: The list of shorts to compress.
+
+    Returns:
+        The data as a list of bytes.
+    """
+    
+    escape = -2 ** 7
+    small = 2 ** 7 - 1
+    packed = []
+
+    for dword in ints32:
+        if abs(dword) <= small:
+            packed.append(dword)
+        else:
+            packed.append(escape)
+            packed.append(dword & 0xFF)
+            dword = dword >> 8
+            packed.append(dword & 0xFF)
+            dword = dword >> 8
+            packed.append(dword & 0xFF)
+            dword = dword >> 8
+            packed.append(dword)
+
+    return np.int8(packed)
+
+def unpack_8_32(ints8):
+    """
+    Unpacks the data in little endian order.
+
+    Args:
+        List ints8s: The list of bytes to decompress.
+
+    Returns:
+        The decompressed integers.
+    """
+    
+    escape = -2 ** 7
+    unpacked = []
+    
+    i = 0
+    while i < len(ints8):
+        byte = ints8[i]
+
+        if byte == escape:
+            i += 1
+            dword = ints8[i] & 0xFF
+            i += 1
+            dword += (ints8[i] << 8) & 0xFF00
+            i += 1
+            dword += (ints8[i] << 16) & 0xFF0000
+            i += 1
+            dword += ints8[i] << 24
+            unpacked.append(dword)
+        else:
+            unpacked.append(byte)
+
+        i += 1
+
+    return np.int32(unpacked)
+
 def compress(lzma_stream):
     """
     Packs replay into a more compact format.
@@ -11,9 +143,73 @@ def compress(lzma_stream):
     Returns:
         An lzma compressed bytestring
     """
+    
+    #separate the lzma stream to apply different compression for each datatype
+    xs, ys, zs, ws = separate(lzma_stream)
 
+    xs = unsorted_diff_pack_16_8(xs)
+    ys = unsorted_diff_pack_16_8(ys)
+
+    ws = pack_32_8(ws)
+    zs = np.int8(zs)
+    #store all data as arrays of bytes with their lenght stored in the first 4 bytes
+    def pack_bytes(bs):
+        return struct.pack(f'<I{len(bs)}b', len(bs), *bs)
+
+    buf = b''.join([pack_bytes(bs) for bs in (xs, ys, zs, ws)])
+
+    return lzma.compress(buf, format=2)
+
+def decompress(compressed_lzma):
+    """
+    Decompresses a separated and compressed lzma into an lzma stream.
+
+    Args:
+        String compressed_lzma: A separated and compressed representation of replay data.
+
+    Returns:
+        An lzma compressed bytestring, identical to the (decoded) string returned by the get_replay api endpoint.
+    """
+    
+    data = lzma.decompress(compressed_lzma)
+
+    def unpack_bytes(data):
+        size, = struct.unpack('<I', data[:4])
+        data = data[4:]
+        bs = struct.unpack(f'<{size}b', data[:size])
+        data = data[size:]
+
+        return bs, data
+
+    xs, data = unpack_bytes(data)
+    ys, data = unpack_bytes(data)
+    zs, data = unpack_bytes(data)
+    ws, data = unpack_bytes(data)
+
+    xs = unsorted_diff_unpack_8_16(xs)
+    ys = unsorted_diff_unpack_8_16(ys)
+
+    ws = unpack_8_32(ws)
+
+    return combine(xs, ys, zs, ws)
+
+def separate(lzma_stream):
+    """
+    Separates the lzma stream of frames into separate lists of x, y, z and w.
+
+    Args:
+        String lzma_stream: The lzma to separate.
+        
+    Returns:
+        The lists of x, y, z, w.
+    """
     text = lzma.decompress(lzma_stream).decode('UTF-8')
-    raw_list = []
+
+    xs = []
+    ys = []
+    zs = []
+    ws = []
+
     for frame in text.split(','):
         if not frame:
             continue
@@ -40,83 +236,37 @@ def compress(lzma_stream):
         #x: signed short
         #y: signed short
         #z: unsigned char
-        raw_list.append(_pack_int24(w)) #w
-        raw_list.append(struct.pack('<hhB', x, y, z)) #x, y, and z
+        xs.append(x)
+        ys.append(y)
+        zs.append(z)
+        ws.append(w)
 
-    raw = b''.join(raw_list)
-    compressed = lzma.compress(raw, format=2)
-    return compressed
+    return xs, ys, zs, ws
 
-def decompress(wtc_bytes):
+def combine(xs, ys, zs, ws):
     """
-    Decompresses a wtc stream into an lzma stream.
+    Combines the lists of x, y, z and w into a lzma stream.
 
     Args:
-        String wtc_bytes: A wtc compressed bytestring (returned by wtc.compress).
-
+        List x: All x datapoints.
+        List y: All y datapoints.
+        List z: All z datapoints.
+        List w: All w datapoints.
+        
     Returns:
-        An lzma compressed bytestring, identical to the (decoded) string returned by the get_replay api endpoint.
+        The combination as an lzma stream.
     """
-    output_list = []
-    data = lzma.decompress(wtc_bytes)
-    #each frame is 8 bytes
-    for i in range(0, len(data), 8):
-        frame = data[i : i+8]
-        #extract W on its own since it's an int24 and cannot be used with struct.unpack
-        b_w, frame = frame[:3], frame[3:]
+    
+    if not len(xs) == len(ys) == len(zs) == len(ws):
+        raise ValueError("The bytearrays are of unequal lengths")
 
-        #w: signed 24bit integer
-        w = _unpack_int24(b_w)
+    xs = np.array(xs) / 16
+    ys = np.array(ys) / 16
 
-        #x: signed short
-        #y: signed short
-        #z: unsigned char
-        x, y, z = struct.unpack('<hhB', frame)
+    frames = zip(xs, ys, zs, ws)
 
-        #X and Y are stored as shorts; convert and scale them back to their float forms
-        x /= 16
-        y /= 16
+    frames = [f'{w}|{x}|{y}|{z},' for x, y, z, w in frames]
 
-        output_list.append(f'{w}|{x}|{y}|{z},')
+    output = ''.join(frames)
 
-    output = ''.join(output_list)
-    lzma_stream = lzma.compress(output.encode('UTF-8'), format=2)
-    return lzma_stream
-
-
-def _pack_int24(integer):
-    """
-    Converts an integer to a 24 bit bytes object.
-
-    Args:
-        Integer integer: The number to convert to bytes.
-
-    Returns:
-        A 24 bit int as bytes.
-    """
-
-    if not (-0x800000 <= integer < 0x800000):
-        raise ValueError('Value must be between -0x800000 and 0x800000')
-    output = struct.pack('<i', integer)
-    output = output[:-1]
-    return output
-
-def _unpack_int24(int_bytes):
-    """
-    Converts a 24 bit bytes object to an integer.
-
-    Args:
-        Bytes int_bytes: The bytes to convert to int.
-
-    Returns:
-        An integer representation of the byte input.
-    """
-
-    if len(int_bytes) != 3:
-        raise ValueError('Value must be an int24')
-    sign = int_bytes[-1] & 0x80
-    if sign:
-        int_bytes = int_bytes + b'\xFF'
-    else:
-        int_bytes = int_bytes + b'\x00'
-    return struct.unpack('<i', int_bytes)[0]
+    return lzma.compress(output.encode('UTF-8'), format=2)
