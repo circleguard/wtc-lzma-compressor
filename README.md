@@ -5,9 +5,9 @@ WTC is an extension of the lzma compression format, specifically designed to mak
 | Part | Original lzma datatype | WTC datatype |
 | --- | --- | --- |
 | w (ms since preivous frame) | Long (8 bytes) | 24bit Integer (3 bytes)|
-| x	(x-cord) | Float (4 bytes) | Short (2 bytes) |
-| y	(y-cord) | Float (4 bytes) | Short (2 bytes) |
-| z	(bit combination of keypresses) | Integer (4 bytes) | Char (1 byte) |
+| x (x-cord) | Float (4 bytes) | Short (2 bytes) |
+| y (y-cord) | Float (4 bytes) | Short (2 bytes) |
+| z (bit combination of keypresses) | Integer (4 bytes) | Char (1 byte) |
 
 This compresses the original 20 byte frame to an 8 byte frame, but not without losses. Precision is lost on w, x, and y, but not z, because the keypressed bit combination will never go above 4 bits for osu!standard. Though it may be larger for other gamemodes such as 7k mania, this compressor is explicitly for osu!standard.
 
