@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf8") as readme:
 
 setuptools.setup(
     name="wtc",
-    version="1.0.0",
+    version="1.1.3",
     author="Chris Miuchiz",
     author_email="chrismiuchiz@gmail.com",
     description="Compress osu replay lzma bytestrings",
