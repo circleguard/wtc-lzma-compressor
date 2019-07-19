@@ -45,10 +45,10 @@ def unsorted_diff_unpack_8_16(ints8):
     Returns:
         The decompressed shorts.
     """
-    
+
     escape = -2 ** 7
     decoded = []
-    
+
     i = 0
     while i < len(ints8):
         byte = ints8[i]
@@ -78,7 +78,7 @@ def pack_32_8(ints32):
     Returns:
         The data as a list of bytes.
     """
-    
+
     escape = -2 ** 7
     small = 2 ** 7 - 1
     packed = []
@@ -108,10 +108,10 @@ def unpack_8_32(ints8):
     Returns:
         The decompressed integers.
     """
-    
+
     escape = -2 ** 7
     unpacked = []
-    
+
     i = 0
     while i < len(ints8):
         byte = ints8[i]
@@ -143,7 +143,7 @@ def compress(lzma_stream):
     Returns:
         An lzma compressed bytestring
     """
-    
+
     #separate the lzma stream to apply different compression for each datatype
     xs, ys, zs, ws = separate(lzma_stream)
 
@@ -170,7 +170,7 @@ def decompress(compressed_lzma):
     Returns:
         An lzma compressed bytestring, identical to the (decoded) string returned by the get_replay api endpoint.
     """
-    
+
     data = lzma.decompress(compressed_lzma)
 
     def unpack_bytes(data):
@@ -199,7 +199,7 @@ def separate(lzma_stream):
 
     Args:
         String lzma_stream: The lzma to separate.
-        
+
     Returns:
         The lists of x, y, z, w.
     """
@@ -252,11 +252,11 @@ def combine(xs, ys, zs, ws):
         List y: All y datapoints.
         List z: All z datapoints.
         List w: All w datapoints.
-        
+
     Returns:
         The combination as an lzma stream.
     """
-    
+
     if not len(xs) == len(ys) == len(zs) == len(ws):
         raise ValueError("The bytearrays are of unequal lengths")
 
