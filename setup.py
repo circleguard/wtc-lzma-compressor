@@ -20,7 +20,7 @@ setup(
     author = "Chris Miuchiz",
     author_email = "chrismiuchiz@gmail.com",
     url = "https://github.com/circleguard/wtc-lzma-compressor",
-    download_url = "https://github.com/circleguard/wtc-lzma-compressor/tarball/" + __version__,
+    download_url = "https://github.com/circleguard/wtc-lzma-compressor/tarball/v" + __version__,
     license = "MIT",
     packages = find_packages()
 )
