@@ -1,3 +1,5 @@
+[![PyPI version](https://badge.fury.io/py/wtc.svg)](https://pypi.org/project/wtc/)
+
 # WTC
 
 WTC is an extension of the lzma compression format, specifically designed to make osu!std replays smaller before storing them. It reduces the size of certain datatypes in the original .osr format, achieving ~40% lossy compression ratios.
