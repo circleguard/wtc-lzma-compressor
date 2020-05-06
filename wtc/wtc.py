@@ -160,13 +160,13 @@ def compress(lzma_stream):
 
     return lzma.compress(buf, format=2)
 
-def decompress(compressed_lzma, return_decompressed_lzma=False):
+def decompress(compressed_lzma, decompressed_lzma=False):
     """
     Decompresses a separated and compressed lzma into an lzma stream.
 
     Args:
         String compressed_lzma: A separated and compressed representation of replay data.
-        Boolean return_decompressed_lzma: Whether to return decompressed and decoded lzma, after decompressing from wtc.
+        Boolean decompressed_lzma: Whether to return decompressed and decoded lzma, after decompressing from wtc.
 
     Returns:
         An lzma compressed bytestring, identical to the (decoded) string returned by the get_replay api endpoint.
@@ -192,7 +192,7 @@ def decompress(compressed_lzma, return_decompressed_lzma=False):
 
     ws = unpack_8_32(ws)
     ret = combine(xs, ys, zs, ws)
-    if return_decompressed_lzma:
+    if decompressed_lzma:
         return ret
     # format 1 is FORMAT_XZ, an implementation of lzma2, the most recent lzma
     # standard. However I've been told (but have not tested) by wtc that osu!
