@@ -160,12 +160,13 @@ def compress(lzma_stream):
 
     return lzma.compress(buf, format=2)
 
-def decompress(compressed_lzma):
+def decompress(compressed_lzma, return_decompressed_lzma=False):
     """
     Decompresses a separated and compressed lzma into an lzma stream.
 
     Args:
         String compressed_lzma: A separated and compressed representation of replay data.
+        Boolean return_decompressed_lzma: Whether to return decompressed and decoded lzma, after decompressing from wtc.
 
     Returns:
         An lzma compressed bytestring, identical to the (decoded) string returned by the get_replay api endpoint.
@@ -190,8 +191,15 @@ def decompress(compressed_lzma):
     ys = unsorted_diff_unpack_8_16(ys)
 
     ws = unpack_8_32(ws)
-
-    return combine(xs, ys, zs, ws)
+    ret = combine(xs, ys, zs, ws)
+    if return_decompressed_lzma:
+        return ret
+    # format 1 is FORMAT_XZ, an implementation of lzma2, the most recent lzma
+    # standard. However I've been told (but have not tested) by wtc that osu!
+    # only accepts replays in format 2 (aka FORMAT_ALONE), the older lzma
+    # standard.
+    ret = lzma.compress(ret.encode('UTF-8'), format=2)
+    return
 
 def separate(lzma_stream):
     """
@@ -254,7 +262,7 @@ def combine(xs, ys, zs, ws):
         List w: All w datapoints.
 
     Returns:
-        The combination as an lzma stream.
+        The combination as a string.
     """
 
     if not len(xs) == len(ys) == len(zs) == len(ws):
@@ -267,6 +275,4 @@ def combine(xs, ys, zs, ws):
 
     frames = [f'{w}|{x}|{y}|{z},' for x, y, z, w in frames]
 
-    output = ''.join(frames)
-
-    return lzma.compress(output.encode('UTF-8'), format=2)
+    return ''.join(frames)
