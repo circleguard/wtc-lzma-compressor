@@ -199,7 +199,7 @@ def decompress(compressed_lzma, decompressed_lzma=False):
     # only accepts replays in format 2 (aka FORMAT_ALONE), the older lzma
     # standard.
     ret = lzma.compress(ret.encode('UTF-8'), format=2)
-    return
+    return ret
 
 def separate(lzma_stream):
     """
