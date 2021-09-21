@@ -13,7 +13,7 @@ setup(
     long_description_content_type = "text/markdown",
     classifiers = [
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
     ],
     keywords = ["osu!, compression, lzma, python, replay, osr"],
@@ -21,6 +21,5 @@ setup(
     author_email = "chrismiuchiz@gmail.com",
     url = "https://github.com/circleguard/wtc-lzma-compressor",
     download_url = "https://github.com/circleguard/wtc-lzma-compressor/tarball/v" + __version__,
-    license = "MIT",
     packages = find_packages()
 )
